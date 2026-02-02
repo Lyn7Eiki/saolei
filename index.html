@@ -1,0 +1,1357 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>mine2</title>
+    <style>
+      :root {
+        --excel-green: #217346; /* Official Green */
+        --excel-dark-green: #105c31;
+        --ribbon-bg: #f3f2f1;
+        --ribbon-hover: #c8c8c8;
+        --border-color: #d1d1d1;
+        --header-bg: #f8f9fa;
+        --header-hover: #e1e1e1;
+        --cell-border: #e1e1e1;
+        --selection-border: #217346;
+        --text-primary: #262626;
+        --text-secondary: #444;
+        --cell-size: 26px;
+      }
+
+      body {
+        margin: 0;
+        padding: 0;
+        font-family:
+          "Segoe UI", "Segoe UI Web", "Helvetica Neue", "Helvetica", "Arial",
+          sans-serif;
+        background: #fff;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        font-size: 13px;
+        color: var(--text-primary);
+      }
+
+      /* --- Scrollbar Styling --- */
+      ::-webkit-scrollbar {
+        width: 12px;
+        height: 12px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #f1f1f1;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #c1c1c1;
+        border: 3px solid #f1f1f1;
+        border-radius: 6px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #a8a8a8;
+      }
+
+      /* --- Top Title Bar --- */
+      .title-bar {
+        background: var(--excel-green);
+        color: white;
+        padding: 0 16px;
+        height: 40px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 12px;
+        user-select: none;
+      }
+      .file-info {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+      }
+      .app-icon {
+        font-size: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: white;
+        color: var(--excel-green);
+        width: 24px;
+        height: 24px;
+        border-radius: 4px;
+        font-weight: bold;
+      }
+      .file-name {
+        font-weight: 600;
+        font-size: 14px;
+      }
+      .file-status {
+        opacity: 0.8;
+        margin-left: 8px;
+        font-weight: 400;
+        display: none; /* Hide on small screens */
+      }
+      @media (min-width: 600px) {
+        .file-status {
+          display: inline;
+        }
+      }
+
+      .window-controls span {
+        padding: 8px 12px;
+        cursor: pointer;
+        transition: background 0.2s;
+        font-family: "Segoe MDL2 Assets", serif; /* Fallback */
+      }
+      .window-controls span:hover {
+        background: rgba(255, 255, 255, 0.1);
+      }
+
+      /* --- Ribbon Area --- */
+      .ribbon {
+        background: var(--ribbon-bg);
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+        z-index: 10;
+      }
+      .ribbon-tabs {
+        display: flex;
+        padding-left: 10px;
+        background: var(--excel-green);
+        overflow-x: auto;
+      }
+      /* Custom Scrollbar for top tabs if they overflow */
+      .ribbon-tabs::-webkit-scrollbar {
+        height: 0;
+      }
+
+      .ribbon-tab {
+        padding: 8px 16px;
+        color: rgba(255, 255, 255, 0.85);
+        cursor: pointer;
+        border-top-left-radius: 4px;
+        border-top-right-radius: 4px;
+        margin-top: 4px;
+        font-size: 13px;
+        transition: all 0.1s;
+        position: relative;
+      }
+      .ribbon-tab:hover {
+        background: rgba(255, 255, 255, 0.1);
+        color: #fff;
+      }
+      .ribbon-tab.active {
+        background: var(--ribbon-bg);
+        color: var(--excel-green);
+        font-weight: 600;
+      }
+      .ribbon-tab.active::after {
+        /* content: ""; */ /* Underline style if needed, but background implies active enough */
+      }
+
+      .toolbar {
+        padding: 6px 12px;
+        display: flex;
+        gap: 12px;
+        height: 90px;
+        align-items: flex-start;
+        overflow-x: auto;
+        position: relative;
+      }
+
+      .tool-group {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        border-right: 1px solid #e0e0e0;
+        padding: 0 10px;
+        height: 100%;
+        justify-content: flex-start;
+        min-width: max-content;
+      }
+      .tool-group:last-child {
+        border-right: none;
+      }
+
+      .tool-group-label {
+        display: none;
+      }
+
+      .tool-row {
+        display: flex;
+        gap: 4px;
+        align-items: center;
+        margin-bottom: auto;
+        padding-top: 4px;
+      }
+
+      /* --- Excel Buttons --- */
+      .excel-btn {
+        background: transparent;
+        border: 1px solid transparent;
+        padding: 4px;
+        border-radius: 3px;
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        font-size: 11px;
+        color: var(--text-primary);
+        gap: 4px;
+        min-width: 48px;
+        position: relative;
+        z-index: 1;
+      }
+      .excel-btn:hover {
+        background: #e1dfdd;
+      }
+      .excel-btn:active {
+        background: #cecece;
+        transform: translateY(1px);
+      }
+      .excel-btn.active {
+        background: #c5e4d1; /* Light Green */
+        color: #0b4a24;
+        border: 1px solid transparent; /*#217346;*/
+      }
+
+      /* SVG Icon Container */
+      .excel-btn-icon {
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .excel-btn-icon svg {
+        width: 20px;
+        height: 20px;
+        fill: #444;
+      }
+      .excel-btn.active .excel-btn-icon svg {
+        fill: #105c31;
+      }
+
+      /* --- Inputs --- */
+      .excel-input-group {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-bottom: 6px;
+      }
+      .excel-input-label {
+        font-size: 11px;
+        color: #444;
+        min-width: 30px;
+      }
+      .excel-input {
+        border: 1px solid #707070; /* Darker border for contrast */
+        padding: 3px 6px;
+        font-size: 12px;
+        border-radius: 0;
+        width: 45px;
+        outline: none;
+        transition: border 0.2s;
+      }
+      .excel-input:focus {
+        border-color: var(--excel-green);
+        box-shadow: 0 0 0 1px inset var(--excel-green);
+      }
+
+      /* --- Formula Bar --- */
+      .formula-bar {
+        display: flex;
+        align-items: center;
+        padding: 6px;
+        border-bottom: 1px solid var(--border-color);
+        background: #fff;
+        gap: 8px;
+        height: 28px;
+      }
+      .name-box {
+        border: 1px solid var(--border-color);
+        width: 60px;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        padding-left: 8px;
+        font-size: 12px;
+        color: #333;
+        box-sizing: border-box;
+        background: white;
+        font-family: inherit;
+      }
+      .fx-divider {
+        width: 1px;
+        height: 60%;
+        background: #ddd;
+        margin: 0 4px;
+      }
+      .fx-icon {
+        color: #888;
+        font-style: italic;
+        font-family: serif;
+        font-weight: bold;
+        cursor: pointer;
+        user-select: none;
+        font-size: 14px;
+        padding: 0 4px;
+      }
+      .fx-icon:hover {
+        color: #333;
+      }
+      .formula-input {
+        flex: 1;
+        border: 1px solid var(--border-color);
+        height: 100%;
+        padding: 0 8px;
+        font-size: 13px;
+        box-sizing: border-box;
+        outline: none;
+      }
+      .formula-input:focus {
+        border-color: var(--excel-green);
+      }
+
+      /* --- Main Sheet Area --- */
+      .sheet-container {
+        flex: 1;
+        display: grid;
+        grid-template-columns: 46px 1fr;
+        grid-template-rows: 24px 1fr;
+        overflow: hidden;
+        background: #fdfdfd;
+      }
+
+      .select-all {
+        background: #e6e6e6; /* Grey selector */
+        border-right: 1px solid #bfbfbf;
+        border-bottom: 1px solid #bfbfbf;
+        position: relative;
+      }
+      .select-all::after {
+        content: "";
+        position: absolute;
+        right: 0;
+        bottom: 0;
+        border-bottom: 8px solid #999;
+        border-left: 8px solid transparent;
+      }
+
+      .col-header-container {
+        overflow: hidden;
+        background: #e6e6e6; /* Header Grey */
+        border-bottom: 1px solid #bfbfbf;
+        display: flex;
+        padding-left: 3px; /* Align with grid left border */
+      }
+      .col-header {
+        min-width: var(--cell-size);
+        width: var(--cell-size);
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-right: 1px solid #bfbfbf;
+        font-size: 12px;
+        color: #333;
+        user-select: none;
+        box-sizing: border-box; /* Fix alignment */
+      }
+      .col-header.active {
+        background: #d4d4d4;
+        color: var(--excel-green);
+        font-weight: bold;
+        border-bottom: 2px solid var(--excel-green);
+      }
+
+      .row-header-container {
+        overflow: hidden;
+        background: #e6e6e6;
+        border-right: 1px solid #bfbfbf;
+        display: flex;
+        flex-direction: column;
+        padding-top: 3px; /* Align with grid top border */
+      }
+      .row-header {
+        min-height: var(--cell-size);
+        height: var(--cell-size);
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-bottom: 1px solid #bfbfbf;
+        font-size: 12px;
+        color: #333;
+        user-select: none;
+        flex-shrink: 0; /* PREVENT SHRINKING */
+        box-sizing: border-box; /* Fix alignment */
+      }
+      .row-header.active {
+        background: #d4d4d4;
+        color: var(--excel-green);
+        font-weight: bold;
+        border-right: 2px solid var(--excel-green);
+      }
+
+      /* --- The Grid --- */
+      /* --- The Grid (Classic Style) --- */
+      .grid-viewport {
+        overflow: auto;
+        position: relative;
+        background: #c0c0c0; /* Classic Grey Background */
+        /* padding removed for alignment */
+      }
+      #grid {
+        display: grid;
+        background: #808080;
+        border-top: 3px solid #808080;
+        border-left: 3px solid #808080;
+        border-right: 3px solid #fff;
+        border-bottom: 3px solid #fff;
+        grid-auto-rows: var(--cell-size);
+        /* Scrollbar buffers */
+        margin-right: 18px;
+        margin-bottom: 18px;
+        width: fit-content; /* Remove excess width */
+      }
+
+      /* Sync scroll buffers for headers */
+      /* Compensation calculation: GridBuffer (18px) + ScrollbarSize (approx 17px) = 35px */
+      #row-headers {
+        padding-bottom: 36px; /* 18px buffer + scrollbar height to match sync */
+        min-width: 100%;
+      }
+      #col-headers {
+        padding-right: 36px; /* 18px buffer + scrollbar width to match sync */
+        height: 100%;
+      }
+
+      /* Custom Scrollbar for Webkit */
+      ::-webkit-scrollbar {
+        width: 16px;
+        height: 16px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-left: 1px solid #d1d1d1;
+        border-top: 1px solid #d1d1d1;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #c1c1c1;
+        border: 2px solid #f1f1f1;
+        border-radius: 0;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #a8a8a8;
+      }
+      /* Corner square */
+      ::-webkit-scrollbar-corner {
+        background: #f1f1f1;
+      }
+
+      .cell {
+        width: var(--cell-size);
+        height: var(--cell-size);
+        background-color: #c0c0c0;
+        /* Classic 3D Bevel */
+        border-top: 2px solid #fff;
+        border-left: 2px solid #fff;
+        border-right: 2px solid #808080;
+        border-bottom: 2px solid #808080;
+
+        box-sizing: border-box;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        font-size: 16px;
+        font-weight: 900; /* Bold numbers */
+        font-family:
+          "Times New Roman", "Courier New", serif; /* Classic Serif */
+
+        cursor: default;
+        user-select: none;
+        position: relative;
+      }
+
+      /* Active state (pressed) for closed cells - not implemented deep logic, just visuals */
+      .cell:active:not(.open) {
+        border: none;
+        border-top: 1px solid #808080;
+        border-left: 1px solid #808080;
+        padding: 1px 0 0 1px; /* Shift content */
+      }
+
+      .cell:hover {
+        /* No outline in classic */
+        outline: none;
+      }
+
+      /* Cell States */
+      .cell.open {
+        background-color: #c0c0c0;
+        border: 1px solid #808080; /* Flat look */
+        /* To simulate shared borders we might need negative margin, but simple 1px solid grey is close enough to classic "indented" if grid bg is grey */
+        border-top: 1px solid #808080;
+        border-left: 1px solid #808080;
+        border-right: none;
+        border-bottom: none;
+        /* Actually classic open cells have no border, just the grid lines. 
+           We can achieve this by making grid background grey and cells open transparent? 
+           Let's stick to a thin grey border to define the grid. */
+        border: 1px solid #777;
+        border-width: 1px 0 0 1px;
+      }
+
+      /* Numbers */
+      /* Numbers */
+      .n1 {
+        color: #0000ff;
+      } /* Blue */
+      .n2 {
+        color: #008000;
+      } /* Green */
+      .n3 {
+        color: #ff0000;
+      } /* Red */
+      .n4 {
+        color: #000080;
+      } /* Dark Blue */
+      .n5 {
+        color: #800000;
+      } /* Maroon */
+      .n6 {
+        color: #008080;
+      } /* Teal */
+      .n7 {
+        color: #000000;
+      } /* Black */
+      .n8 {
+        color: #808080;
+      } /* Gray */
+
+      .cell.flag {
+        /* Classic Flag */
+      }
+      .icon-flag {
+        width: 16px;
+        height: 16px;
+      }
+      .icon-mine {
+        width: 18px;
+        height: 18px;
+        fill: #000;
+      }
+
+      .cell.mine {
+        background: #ffcccc;
+      }
+
+      /* Peek specific */
+      .peek-mode .cell:not(.open) {
+        opacity: 0.6;
+      }
+      .peek-mode .cell.has-mine:not(.open) {
+        background: #fff0f0;
+      }
+      .peek-mode .cell.has-mine:not(.open)::after {
+        content: "";
+        width: 16px;
+        height: 16px;
+        background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2c5.52 0 10 4.48 10 10s-4.48 10-10 10S2 17.52 2 12 6.48 2 12 2z" opacity=".2"/><circle cx="12" cy="12" r="8" fill="%23333"/><path d="M12 2L12 5M12 19L12 22M2 12L5 12M19 12L22 12M5 5L7 7M17 17L19 19M5 19L7 17M17 7L19 5" stroke="%23333" stroke-width="2"/></svg>');
+        background-repeat: no-repeat;
+        background-position: center;
+        background-size: contain;
+      }
+
+      /* --- Status Bar --- */
+      .status-bar-container {
+        background: var(--header-bg);
+        border-top: 1px solid var(--border-color);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        height: 28px;
+        padding: 0;
+        font-size: 11px;
+        color: #555;
+        user-select: none;
+      }
+      .sheet-tabs {
+        display: flex;
+        align-items: flex-end;
+        margin-left: 10px;
+        height: 100%;
+      }
+      .sheet-tab {
+        padding: 0 16px;
+        background: #fff;
+        color: var(--excel-green);
+        font-weight: 600;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        cursor: pointer;
+        border-top-left-radius: 3px;
+        border-top-right-radius: 3px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      }
+      .sheet-tab.inactive {
+        background: transparent;
+        box-shadow: none;
+        color: #333;
+        font-weight: normal;
+      }
+      .sheet-new-btn {
+        width: 28px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        font-size: 16px;
+        color: #666;
+      }
+      .sheet-new-btn:hover {
+        background: rgba(0, 0, 0, 0.05);
+        border-radius: 50%;
+      }
+
+      .status-info {
+        display: flex;
+        gap: 20px;
+        padding-right: 20px;
+      }
+      .status-item {
+        display: flex;
+        gap: 6px;
+      }
+      /* Rocker Switch Styles (Minimal) */
+      .rocker-switch {
+        width: 36px;
+        height: 56px;
+        background-color: #f3f2f1;
+        border-radius: 4px;
+        position: relative;
+        cursor: pointer;
+        border: 1px solid #d1d1d1;
+        overflow: hidden;
+        margin-left: 12px;
+      }
+      .rocker-btn {
+        width: 100%;
+        height: 100%;
+        background: #fff;
+        position: relative;
+        transition: all 0.2s ease;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: space-between;
+        padding: 8px 0;
+        box-sizing: border-box;
+        color: #666;
+        font-size: 11px;
+      }
+
+      /* Active Indicator Line */
+      .rocker-btn::after {
+        content: "";
+        position: absolute;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background: transparent;
+        transition: all 0.2s;
+      }
+
+      /* States */
+      .rocker-switch.dig-mode .rocker-btn {
+        background: linear-gradient(to bottom, #fff 50%, #f0f0f0 50%);
+      }
+      .rocker-switch.flag-mode .rocker-btn {
+        background: linear-gradient(to bottom, #f0f0f0 50%, #fff 50%);
+      }
+
+      /* Text highlights */
+      .rocker-txt-dig,
+      .rocker-txt-flag {
+        opacity: 0.4;
+        font-weight: normal;
+        transition: all 0.2s;
+      }
+
+      .rocker-switch.dig-mode .rocker-txt-dig {
+        opacity: 1;
+        font-weight: bold;
+        color: var(--excel-green);
+        transform: scale(1.1);
+      }
+      .rocker-switch.flag-mode .rocker-txt-flag {
+        opacity: 1;
+        font-weight: bold;
+        color: #d32f2f;
+        transform: scale(1.1);
+      }
+
+      /* Subtle border to show 'pressed' side */
+      .rocker-switch.dig-mode {
+        box-shadow: inset 0 -2px 4px rgba(0, 0, 0, 0.05);
+      }
+      .rocker-switch.flag-mode {
+        box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Title Bar -->
+    <div class="title-bar" style="display: none"></div>
+
+    <!-- Ribbon -->
+    <div class="ribbon">
+      <div class="ribbon-tabs">
+        <!-- Tabs Removed -->
+      </div>
+
+      <div class="toolbar">
+        <!-- Group: Clipboard/Game Control -->
+        <div class="tool-group">
+          <div class="tool-row" style="margin-bottom: auto">
+            <button class="excel-btn" onclick="applyReset()" title="New Game">
+              <div class="excel-btn-icon">
+                <svg viewBox="0 0 24 24">
+                  <path
+                    d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"
+                  />
+                </svg>
+              </div>
+              <span>新游戏</span>
+            </button>
+            <button class="excel-btn" onclick="undo()" title="Undo">
+              <div class="excel-btn-icon">
+                <svg viewBox="0 0 24 24">
+                  <path
+                    d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z"
+                  />
+                </svg>
+              </div>
+              <span>撤销</span>
+            </button>
+            <button class="excel-btn" onclick="hint()" title="Hint">
+              <div class="excel-btn-icon">
+                <svg viewBox="0 0 24 24">
+                  <path
+                    d="M9 21c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9v1zm3-19C8.14 2 5 5.14 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.86-3.14-7-7-7zm2.85 11.1l-.85.6V16h-4v-2.3l-.85-.6C7.8 12.16 7 10.63 7 9c0-2.76 2.24-5 5-5s5 2.24 5 5c0 1.63-.8 3.16-2.15 4.1z"
+                  />
+                </svg>
+              </div>
+              <span>提示</span>
+            </button>
+          </div>
+          <div class="tool-group-label">剪贴板</div>
+        </div>
+
+        <!-- Group: Dimensions -->
+        <div class="tool-group">
+          <div class="excel-input-group">
+            <span class="excel-input-label">行:</span>
+            <input type="number" id="inp-r" class="excel-input" value="10" />
+          </div>
+          <div class="excel-input-group">
+            <span class="excel-input-label">列:</span>
+            <input type="number" id="inp-c" class="excel-input" value="10" />
+          </div>
+          <div class="tool-group-label">单元格</div>
+        </div>
+
+        <!-- Group: Config -->
+        <div class="tool-group">
+          <div class="excel-input-group">
+            <span class="excel-input-label">雷:</span>
+            <input type="number" id="inp-m" class="excel-input" value="15" />
+          </div>
+          <div style="font-size: 11px; margin-bottom: 6px; display: flex">
+            <label
+              style="
+                display: flex;
+                align-items: center;
+                gap: 5px;
+                cursor: pointer;
+              "
+            >
+              <input
+                type="checkbox"
+                id="chk-autoflag"
+                onchange="toggleAutoFlag()"
+                style="margin: 0"
+              />
+              自动标雷
+            </label>
+          </div>
+          <div class="tool-group-label">数据配置</div>
+        </div>
+
+        <!-- Group: Tools -->
+        <div class="tool-group">
+          <div class="tool-row">
+            <button
+              class="excel-btn"
+              id="btn-peek"
+              onclick="togglePeek()"
+              title="Peek Mode"
+            >
+              <div class="excel-btn-icon">
+                <svg viewBox="0 0 24 24">
+                  <path
+                    d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"
+                  />
+                </svg>
+              </div>
+              <span>透视</span>
+            </button>
+
+            <!-- Rocker Switch (Vertical) -->
+            <div
+              class="rocker-switch dig-mode"
+              id="mode-switch"
+              onclick="toggleMode()"
+            >
+              <div class="rocker-btn">
+                <span class="rocker-txt-dig">挖掘</span>
+                <span class="rocker-txt-flag">插旗</span>
+              </div>
+            </div>
+          </div>
+          <div class="tool-group-label">操作</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Formula Bar -->
+    <div class="formula-bar">
+      <div class="name-box" id="cell-address">A1</div>
+      <div class="fx-divider"></div>
+      <div style="font-size: 12px; color: #666; padding: 0 4px">种子:</div>
+      <input
+        class="formula-input"
+        id="inp-seed"
+        placeholder="随机"
+        style="width: 80px; flex: none"
+      />
+      <div class="fx-divider"></div>
+      <div class="fx-icon" title="提示信息">fx</div>
+      <input
+        class="formula-input"
+        id="game-msg"
+        readonly
+        style="background: #f9f9f9; color: #444"
+        placeholder=""
+      />
+    </div>
+
+    <!-- Main Sheet -->
+    <div class="sheet-container">
+      <!-- Top Left Selector -->
+      <div class="select-all"></div>
+
+      <!-- Column Headers -->
+      <div class="col-header-container" id="col-headers-wrap">
+        <div id="col-headers" style="display: flex"></div>
+      </div>
+
+      <!-- Row Headers -->
+      <div class="row-header-container" id="row-headers-wrap">
+        <div id="row-headers"></div>
+      </div>
+
+      <!-- The Grid -->
+      <div class="grid-viewport" id="grid-viewport" onscroll="syncScroll()">
+        <div id="grid">
+          <!-- Cells generated by JS -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Status Bar -->
+    <div class="status-bar-container">
+      <div class="sheet-tabs">
+        <div class="sheet-tab">Minesweeper</div>
+        <div class="sheet-new-btn" title="New Sheet">⊕</div>
+      </div>
+      <div class="status-info">
+        <div class="status-item"><span id="game-status">就绪</span></div>
+        <div class="status-item">|</div>
+        <div class="status-item">
+          剩余雷数: <span id="mine-lcd" style="font-weight: 600">000</span>
+        </div>
+        <div class="status-item">|</div>
+        <div class="status-item">
+          用时: <span id="time-lcd" style="font-weight: 600">000</span>s
+        </div>
+      </div>
+    </div>
+
+    <script>
+      let rows, cols, mines, seed;
+      let grid = [];
+      let isOver = false;
+      let timer = null;
+      let time = 0;
+      let history = [];
+      let isPeeking = false;
+      let isAutoFlag = false;
+      let isFlagMode = false;
+      let longPressTimer = null;
+
+      function seededRandom() {
+        seed = (seed * 16807) % 2147483647;
+        return (seed - 1) / 2147483646;
+      }
+
+      function applyReset() {
+        document.getElementById("inp-seed").value = "";
+        applySettings();
+      }
+
+      function applySettings() {
+        rows = parseInt(document.getElementById("inp-r").value) || 10;
+        cols = parseInt(document.getElementById("inp-c").value) || 10;
+        mines = parseInt(document.getElementById("inp-m").value) || 15;
+        let sVal = document.getElementById("inp-seed").value;
+        seed = sVal ? parseInt(sVal) : Math.floor(Math.random() * 1000000);
+        document.getElementById("inp-seed").value = seed;
+        document.getElementById("game-msg").value = "游戏开始";
+
+        initGame();
+      }
+
+      function initGame() {
+        clearInterval(timer);
+        isOver = false;
+        time = 0;
+        history = [];
+        isPeeking = false;
+        isAutoFlag = false;
+        isFlagMode = false;
+
+        updateModeIcon();
+        document.getElementById("btn-peek").classList.remove("active");
+        document.getElementById("chk-autoflag").checked = false;
+        document.getElementById("mine-lcd").innerText = String(mines).padStart(
+          3,
+          "0",
+        );
+        document.getElementById("time-lcd").innerText = "000";
+        document.getElementById("game-status").innerText = "就绪";
+        document.getElementById("game-msg").value = "准备就绪";
+
+        generateHeaders(rows, cols);
+
+        const gridEl = document.getElementById("grid");
+        gridEl.style.gridTemplateColumns = `repeat(${cols}, var(--cell-size))`;
+        gridEl.innerHTML = "";
+        grid = [];
+
+        for (let r = 0; r < rows; r++) {
+          grid[r] = [];
+          for (let c = 0; c < cols; c++) {
+            const el = document.createElement("div");
+            el.className = "cell";
+
+            // Mouse Events
+            el.onmousedown = (e) => {
+              if (isOver) return;
+              updateAddress(r, c);
+              highlightHeaders(r, c);
+
+              if (e.button === 0) {
+                if (isFlagMode) {
+                  toggleFlag(r, c);
+                } else {
+                  reveal(r, c, true);
+                }
+              }
+              if (e.button === 2) toggleFlag(r, c);
+            };
+            el.oncontextmenu = (e) => e.preventDefault();
+
+            // Touch Events
+            el.ontouchstart = (e) => {
+              if (isOver) return;
+              updateAddress(r, c);
+              highlightHeaders(r, c);
+              longPressTimer = setTimeout(() => {
+                toggleFlag(r, c);
+                longPressTimer = null;
+              }, 500);
+            };
+            el.ontouchend = (e) => {
+              if (longPressTimer) {
+                clearTimeout(longPressTimer);
+                longPressTimer = null;
+                if (isFlagMode) {
+                  toggleFlag(r, c);
+                } else {
+                  reveal(r, c, true);
+                }
+              }
+            };
+
+            gridEl.appendChild(el);
+            grid[r][c] = {
+              r,
+              c,
+              mine: false,
+              open: false,
+              flag: false,
+              count: 0,
+              el,
+            };
+          }
+        }
+        generateMines();
+      }
+
+      function generateHeaders(rows, cols) {
+        const colHeaderEl = document.getElementById("col-headers");
+        const rowHeaderEl = document.getElementById("row-headers");
+        colHeaderEl.innerHTML = "";
+        rowHeaderEl.innerHTML = "";
+
+        for (let i = 0; i < cols; i++) {
+          const div = document.createElement("div");
+          div.className = "col-header";
+          div.id = `col-${i}`;
+          div.innerText = i + 1;
+          colHeaderEl.appendChild(div);
+        }
+
+        for (let i = 0; i < rows; i++) {
+          const div = document.createElement("div");
+          div.className = "row-header";
+          div.id = `row-${i}`;
+          div.innerText = i + 1;
+          rowHeaderEl.appendChild(div);
+        }
+      }
+
+      let lastR = -1,
+        lastC = -1;
+      function highlightHeaders(r, c) {
+        if (lastR !== -1)
+          document.getElementById(`row-${lastR}`).classList.remove("active");
+        if (lastC !== -1)
+          document.getElementById(`col-${lastC}`).classList.remove("active");
+
+        document.getElementById(`row-${r}`).classList.add("active");
+        document.getElementById(`col-${c}`).classList.add("active");
+        lastR = r;
+        lastC = c;
+      }
+
+      function updateAddress(r, c) {
+        document.getElementById("cell-address").innerText =
+          `(${r + 1}, ${c + 1})`;
+
+        // Formula bar inputs what's in the cell
+        const cell = grid[r][c];
+        let msg = "";
+        if (cell.open) {
+          if (cell.mine) msg = "游戏失败";
+          else if (cell.count > 0) msg = "周围雷数: " + cell.count;
+          else msg = "安全";
+        } else if (cell.flag) {
+          msg = "已标记";
+        }
+        document.getElementById("game-msg").value = msg;
+      }
+
+      function syncScroll() {
+        const viewport = document.getElementById("grid-viewport");
+        document.getElementById("col-headers-wrap").scrollLeft =
+          viewport.scrollLeft;
+        document.getElementById("row-headers-wrap").scrollTop =
+          viewport.scrollTop;
+      }
+
+      function generateMines() {
+        let count = 0;
+        let tempSeed = seed;
+        while (count < mines) {
+          let r = Math.floor(seededRandom() * rows);
+          let c = Math.floor(seededRandom() * cols);
+          if (!grid[r][c].mine) {
+            grid[r][c].mine = true;
+            count++;
+          }
+        }
+        grid.flat().forEach((cell) => {
+          if (cell.mine) return;
+          for (let i = -1; i <= 1; i++) {
+            for (let j = -1; j <= 1; j++) {
+              if (grid[cell.r + i]?.[cell.c + j]?.mine) cell.count++;
+            }
+          }
+        });
+      }
+
+      function reveal(r, c, saveHistory = false) {
+        const cell = grid[r][c];
+        if (cell.open || cell.flag || isOver) return;
+
+        if (saveHistory) {
+          if (history.length === 0) startTimer();
+          history.push(JSON.parse(JSON.stringify(getGridState())));
+        }
+
+        cell.open = true;
+        cell.el.classList.add("open");
+
+        if (cell.mine) {
+          cell.el.innerHTML = `<svg class="icon-mine" viewBox="0 0 24 24"><path d="M12 2c5.52 0 10 4.48 10 10s-4.48 10-10 10S2 17.52 2 12 6.48 2 12 2z" opacity=".2"/><circle cx="12" cy="12" r="8" fill="#333"/><path d="M12 2L12 5M12 19L12 22M2 12L5 12M19 12L22 12M5 5L7 7M17 17L19 19M5 19L7 17M17 7L19 5" stroke="#333" stroke-width="2"/></svg>`;
+          cell.el.classList.add("mine");
+          gameOver(false);
+          updateAddress(r, c);
+          return;
+        }
+
+        if (cell.count > 0) {
+          cell.el.innerText = cell.count;
+          cell.el.classList.add("n" + cell.count);
+        } else {
+          for (let i = -1; i <= 1; i++) {
+            for (let j = -1; j <= 1; j++) {
+              if (grid[r + i]?.[c + j]) reveal(r + i, c + j);
+            }
+          }
+        }
+        checkWin();
+        if (isAutoFlag && !isOver) {
+          autoFlag();
+        }
+
+        updateAddress(r, c);
+      }
+
+      function toggleFlag(r, c) {
+        const cell = grid[r][c];
+        if (cell.open || isOver) return;
+        cell.flag = !cell.flag;
+        cell.el.classList.toggle("flag");
+
+        if (cell.flag) {
+          cell.el.innerHTML =
+            '<svg class="icon-flag" viewBox="0 0 24 24"><path d="M14.4 6L14 4H5v17h2v-7h5.6l.4 2h7V6z"/></svg>';
+        } else {
+          cell.el.innerHTML = "";
+        }
+
+        const flagCount = grid.flat().filter((c) => c.flag).length;
+        document.getElementById("mine-lcd").innerText = String(
+          mines - flagCount,
+        ).padStart(3, "0");
+        updateAddress(r, c);
+      }
+
+      function undo() {
+        if (history.length === 0 || isOver === "win") return;
+        const lastState = history.pop();
+        applyGridState(lastState);
+        isOver = false;
+        document.getElementById("game-status").innerText = "游戏中";
+        if (!timer) startTimer();
+      }
+
+      function getGridState() {
+        return grid.map((row) =>
+          row.map((c) => ({ open: c.open, flag: c.flag })),
+        );
+      }
+
+      function applyGridState(state) {
+        for (let r = 0; r < rows; r++) {
+          for (let c = 0; c < cols; c++) {
+            const s = state[r][c];
+            const cell = grid[r][c];
+            cell.open = s.open;
+            cell.flag = s.flag;
+
+            cell.el.className = "cell";
+            if (cell.open) cell.el.classList.add("open");
+            if (cell.flag) cell.el.classList.add("flag");
+
+            if (cell.flag) {
+              // Classic Flag SVG
+              cell.el.innerHTML =
+                '<svg class="icon-flag" viewBox="0 0 24 24"><path d="M6 2h2v20H6V2z" fill="black"/><path d="M8 4h10l-4 5 4 5H8V4z" fill="#ff0000"/></svg>';
+            } else if (cell.open && cell.mine) {
+              // Classic Mine: Circle + Spikes (simplified here)
+              cell.el.innerHTML = `<svg class="icon-mine" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="black"/><rect x="11" y="2" width="2" height="20" fill="black"/><rect x="2" y="11" width="20" height="2" fill="black"/><rect x="5" y="5" width="14" height="14" transform="rotate(45 12 12)" fill="black"/><rect x="8" y="8" width="5" height="5" fill="white" opacity="0.5" rx="1"/></svg>`;
+              cell.el.classList.add("mine");
+              cell.el.style.backgroundColor = "red"; /* Exploded mine red bg */
+            } else {
+              cell.el.innerHTML = "";
+              cell.el.innerText = cell.open && cell.count > 0 ? cell.count : "";
+            }
+
+            if (cell.open && cell.count > 0)
+              cell.el.classList.add("n" + cell.count);
+            if (isPeeking && cell.mine) cell.el.classList.add("has-mine");
+          }
+        }
+      }
+
+      function startTimer() {
+        document.getElementById("game-status").innerText = "游戏中";
+        if (timer) clearInterval(timer);
+        timer = setInterval(() => {
+          time++;
+          document.getElementById("time-lcd").innerText = String(time).padStart(
+            3,
+            "0",
+          );
+        }, 1000);
+      }
+
+      function gameOver(win) {
+        isOver = win ? "win" : "lose";
+        clearInterval(timer);
+        timer = null;
+        document.getElementById("game-status").innerText = win
+          ? "你赢了!"
+          : "游戏结束";
+        document.getElementById("game-msg").value = win
+          ? "游戏成功"
+          : "游戏失败";
+
+        grid.flat().forEach((c) => {
+          if (c.mine) {
+            c.el.classList.add("open");
+            c.el.classList.add("mine");
+            if (!c.el.querySelector("svg")) {
+              c.el.innerHTML = `<svg class="icon-mine" viewBox="0 0 24 24"><path d="M12 2c5.52 0 10 4.48 10 10s-4.48 10-10 10S2 17.52 2 12 6.48 2 12 2z" opacity=".2"/><circle cx="12" cy="12" r="8" fill="#333"/><path d="M12 2L12 5M12 19L12 22M2 12L5 12M19 12L22 12M5 5L7 7M17 17L19 19M5 19L7 17M17 7L19 5" stroke="#333" stroke-width="2"/></svg>`;
+            }
+          }
+        });
+      }
+
+      function checkWin() {
+        const hidden = grid.flat().filter((c) => !c.open).length;
+        if (hidden === mines) gameOver(true);
+      }
+
+      function toggleMode() {
+        isFlagMode = !isFlagMode;
+        updateModeIcon();
+      }
+
+      function updateModeIcon() {
+        const sw = document.getElementById("mode-switch");
+        if (isFlagMode) {
+          sw.classList.remove("dig-mode");
+          sw.classList.add("flag-mode");
+        } else {
+          sw.classList.remove("flag-mode");
+          sw.classList.add("dig-mode");
+        }
+      }
+
+      function togglePeek() {
+        isPeeking = !isPeeking;
+        document
+          .getElementById("btn-peek")
+          .classList.toggle("active", isPeeking);
+        document
+          .getElementById("grid")
+          .classList.toggle("peek-mode", isPeeking);
+        grid.flat().forEach((c) => {
+          if (c.mine) c.el.classList.toggle("has-mine", isPeeking);
+        });
+      }
+
+      function toggleAutoFlag() {
+        isAutoFlag = document.getElementById("chk-autoflag").checked;
+        if (isAutoFlag && !isOver) {
+          autoFlag();
+        }
+      }
+
+      function autoFlag() {
+        if (isOver) return;
+        let flagged = 0;
+        grid.flat().forEach((cell) => {
+          if (!cell.open || cell.count === 0) return;
+          const neighbors = getNeighbors(cell.r, cell.c);
+          const closedNeighbors = neighbors.filter((n) => !n.open);
+          const flaggedNeighbors = neighbors.filter((n) => n.flag);
+          const remainingMines = cell.count - flaggedNeighbors.length;
+          const unflaggedClosed = closedNeighbors.filter((n) => !n.flag);
+
+          if (remainingMines === unflaggedClosed.length && remainingMines > 0) {
+            unflaggedClosed.forEach((n) => {
+              if (!n.flag) {
+                n.flag = true;
+                n.el.classList.add("flag");
+                n.el.innerHTML =
+                  '<svg class="icon-flag" viewBox="0 0 24 24"><path d="M14.4 6L14 4H5v17h2v-7h5.6l.4 2h7V6z"/></svg>';
+                flagged++;
+              }
+            });
+          }
+        });
+
+        const flagCount = grid.flat().filter((c) => c.flag).length;
+        document.getElementById("mine-lcd").innerText = String(
+          mines - flagCount,
+        ).padStart(3, "0");
+      }
+
+      function getNeighbors(r, c) {
+        const neighbors = [];
+        for (let i = -1; i <= 1; i++) {
+          for (let j = -1; j <= 1; j++) {
+            if (i === 0 && j === 0) continue;
+            if (grid[r + i]?.[c + j]) neighbors.push(grid[r + i][c + j]);
+          }
+        }
+        return neighbors;
+      }
+
+      function hint() {
+        if (isOver) return;
+        let safeCell = null;
+        for (const cell of grid.flat()) {
+          if (!cell.open || cell.count === 0) continue;
+          const neighbors = getNeighbors(cell.r, cell.c);
+          const flaggedNeighbors = neighbors.filter((n) => n.flag);
+          const closedNeighbors = neighbors.filter((n) => !n.open && !n.flag);
+          if (
+            flaggedNeighbors.length === cell.count &&
+            closedNeighbors.length > 0
+          ) {
+            safeCell = closedNeighbors[0];
+            break;
+          }
+        }
+        if (!safeCell) {
+          const safeCells = grid
+            .flat()
+            .filter((c) => !c.open && !c.mine && !c.flag);
+          if (safeCells.length > 0)
+            safeCell = safeCells[Math.floor(Math.random() * safeCells.length)];
+        }
+        if (safeCell) {
+          safeCell.el.style.backgroundColor = "#fff9c4"; /* Light yellow */
+          setTimeout(() => {
+            if (!safeCell.open) safeCell.el.style.backgroundColor = "";
+          }, 1000);
+        }
+      }
+
+      applySettings();
+    </script>
+  </body>
+</html>
